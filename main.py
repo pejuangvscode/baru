@@ -41,6 +41,8 @@ def main():
     skip_frames = 5  # Deteksi setiap 5 frame untuk performa
     frame_idx = 0
     last_faces = []  # Simpan faces terakhir untuk draw bbox terus
+    capture_skip = 5  # Capture unknown setiap 5 frame
+    capture_idx = 0
 
     while True:
         ret, frame = cap.read()
@@ -77,17 +79,27 @@ def main():
                 label = getattr(face, 'match_name', None) if getattr(face, 'match_name', None) else "Unknown"
                 cv2.putText(frame, label, (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
 
-                # Logic untuk capture hanya jika deteksi baru
-                if frame_idx % skip_frames == 0 and not getattr(face, 'match_name', None):
-                    print("Wajah tidak dikenali, menangkap crop wajah...")
-                    face_crop = frame[bbox[1]:bbox[3], bbox[0]:bbox[2]]
-                    unknown_frames.append(face_crop)
-                    if len(unknown_frames) >= 15:
-                        for i, crop in enumerate(unknown_frames):
-                            cv2.imwrite(os.path.join(UNKNOWN_DIR, f'unknown_{frame_count}_{i}.jpg'), crop)
-                        print("15 crop wajah disimpan untuk training nanti")
-                        unknown_frames = []
-                        frame_count += 1
+                # Logic untuk capture jika unknown
+                if not getattr(face, 'match_name', None):
+                    capture_idx += 1
+                    if capture_idx % capture_skip == 0:
+                        # Validasi bbox
+                        h, w = frame.shape[:2]
+                        x1, y1, x2, y2 = bbox
+                        x1, y1 = max(0, x1), max(0, y1)
+                        x2, y2 = min(w, x2), min(h, y2)
+                        if x2 > x1 and y2 > y1:
+                            face_crop = frame[y1:y2, x1:x2]
+                            if face_crop.size > 0:
+                                print("Wajah tidak dikenali, menangkap crop wajah...")
+                                unknown_frames.append(face_crop)
+                                if len(unknown_frames) >= 15:
+                                    # Simpan 15 crop wajah ke folder unknown
+                                    for i, crop in enumerate(unknown_frames):
+                                        cv2.imwrite(os.path.join(UNKNOWN_DIR, f'unknown_{frame_count}_{i}.jpg'), crop)
+                                    print("15 crop wajah disimpan untuk training nanti")
+                                    unknown_frames = []
+                                    frame_count += 1
 
         # Tampilkan frame (opsional)
         cv2.imshow('Presensi GKI KARAWACI', frame)

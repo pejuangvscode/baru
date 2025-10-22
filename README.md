@@ -38,7 +38,10 @@ Sistem pengenalan wajah otomatis menggunakan MobileFaceNet untuk presensi jemaat
    ```
    - Script akan extract embedding dari crop wajah unknown.
    - Hitung average embedding per orang (berdasarkan group 15 frame).
-   - **Masukkan nama** untuk setiap orang yang terdeteksi.
+   - **Tampilkan UI gambar** sampel wajah untuk setiap orang.
+   - **Masukkan nama** untuk setiap orang yang terdeteksi (atau 'skip').
+   - **Tambah ke model existing** (bukan train ulang semua).
+   - **Hapus file unknown** yang sudah didaftarkan.
    - Simpan model fine-tuned ke `models/fine_tuned_model.pkl`.
 3. Restart `main.py` untuk load model baru.
 

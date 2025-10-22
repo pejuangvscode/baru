@@ -9,6 +9,16 @@ from face_recognition import load_model, extract_embedding
 UNKNOWN_DIR = 'data/unknown'
 MODEL_DIR = 'models'
 FINE_TUNED_MODEL = os.path.join(MODEL_DIR, 'fine_tuned_model.pkl')
+DATABASE_FILE = os.path.join(MODEL_DIR, 'face_database.pkl')
+
+# Load existing fine-tuned model
+fine_tuned_db = {}
+if os.path.exists(FINE_TUNED_MODEL):
+    with open(FINE_TUNED_MODEL, 'rb') as f:
+        fine_tuned_db = pickle.load(f)
+
+# Existing names
+existing_names = set(fine_tuned_db.keys())
 
 def train_model():
     """Fine-tune model menggunakan data unknown"""
@@ -37,11 +47,30 @@ def train_model():
     for person_id, embeddings in person_embeddings.items():
         if len(embeddings) > 0:
             avg_embedding = np.mean(embeddings, axis=0)
-            name = input(f"Masukkan nama untuk orang {person_id} (dari unknown_{person_id}): ")
-            if name:
+            
+            # Tampilkan UI untuk assign nama
+            print(f"Menampilkan sampel wajah untuk orang {person_id}")
+            sample_files = [f for f in os.listdir(UNKNOWN_DIR) if f.startswith(f'unknown_{person_id}_')]
+            if sample_files:
+                sample_img = cv2.imread(os.path.join(UNKNOWN_DIR, sample_files[0]))
+                cv2.imshow(f'Wajah Orang {person_id}', sample_img)
+                print("Tekan sembarang key di window gambar untuk lanjut...")
+                cv2.waitKey(0)  # Tunggu user tekan key
+                cv2.destroyWindow(f'Wajah Orang {person_id}')
+            
+            name = input(f"Masukkan nama untuk orang {person_id} (atau 'skip' jika sudah terdaftar): ")
+            if name and name != 'skip' and name not in existing_names:
                 fine_tuned_db[name] = avg_embedding
+                existing_names.add(name)
+                # Hapus file unknown yang sudah diproses
+                for file in os.listdir(UNKNOWN_DIR):
+                    if file.startswith(f'unknown_{person_id}_'):
+                        os.remove(os.path.join(UNKNOWN_DIR, file))
+                print(f"Orang {person_id} didaftarkan sebagai {name}, file unknown dihapus.")
+            elif name == 'skip':
+                print(f"Orang {person_id} dilewati.")
             else:
-                fine_tuned_db[f'unknown_{person_id}'] = avg_embedding
+                print(f"Nama {name} sudah ada atau kosong, dilewati.")
 
     # Simpan model fine-tuned
     with open(FINE_TUNED_MODEL, 'wb') as f:
