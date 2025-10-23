@@ -16,12 +16,29 @@ Sistem pengenalan wajah otomatis menggunakan MobileFaceNet untuk presensi jemaat
    ```
 3. Pastikan kamera tersedia (test dengan `cv2.VideoCapture(0)`)
 
+## Web App untuk Capture
+Jalankan web app untuk capture wajah dengan nama:
+```
+python app.py
+```
+Buka http://localhost:5000, masukkan nama, capture 15 wajah. Akan buat folder `data/nama/` dengan gambar.
+
+## Fine-Tuning Model
+1. Pastikan ada folder nama di `data/`.
+2. Jalankan training:
+   ```
+   python train.py
+   ```
+   - Script akan load dari folder nama, hitung average embedding.
+   - Simpan model fine-tuned ke `models/fine_tuned_model.pkl`.
+3. Restart `main.py` untuk load model baru.
+
 ## Penggunaan
 1. Jalankan script utama:
    ```
    python main.py
    ```
-2. Sistem akan membuka kamera dan mendeteksi wajah.
+   Sistem akan membuka kamera dan mendeteksi wajah.
 3. Jika wajah dikenali, tampilkan nama.
 4. Jika tidak, capture 15 frame ke `data/unknown/`.
 5. **Registrasi Wajah Baru:**

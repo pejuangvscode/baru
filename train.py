@@ -8,6 +8,7 @@ from face_recognition import load_model, extract_embedding
 # Path
 UNKNOWN_DIR = 'data/unknown'
 MODEL_DIR = 'models'
+DATA_DIR = 'data'
 FINE_TUNED_MODEL = os.path.join(MODEL_DIR, 'fine_tuned_model.pkl')
 DATABASE_FILE = os.path.join(MODEL_DIR, 'face_database.pkl')
 
@@ -21,56 +22,37 @@ if os.path.exists(FINE_TUNED_MODEL):
 existing_names = set(fine_tuned_db.keys())
 
 def train_model():
-    """Fine-tune model menggunakan data unknown"""
+    """Fine-tune model menggunakan data dari folder nama"""
     model = load_model()
 
-    # Kumpulkan data dari unknown
-    person_embeddings = {}
-    for file in os.listdir(UNKNOWN_DIR):
-        if file.endswith('.jpg'):
-            # Parse nama person dari filename, misal unknown_0_0.jpg -> person 0
-            parts = file.split('_')
-            person_id = parts[1]
-            img_path = os.path.join(UNKNOWN_DIR, file)
-            img = cv2.imread(img_path)
-            if img is None:
-                continue
-            faces = model.get(img)
-            if faces:
-                embedding = extract_embedding(model, faces[0])
-                if person_id not in person_embeddings:
-                    person_embeddings[person_id] = []
-                person_embeddings[person_id].append(embedding)
+    # Cari folder nama di data/
+    person_folders = [f for f in os.listdir(DATA_DIR) if os.path.isdir(os.path.join(DATA_DIR, f)) and f != 'unknown']
 
-    # Hitung average embedding per person
-    fine_tuned_db = {}
-    for person_id, embeddings in person_embeddings.items():
-        if len(embeddings) > 0:
+    for person_folder in person_folders:
+        person_dir = os.path.join(DATA_DIR, person_folder)
+        embeddings = []
+        for file in os.listdir(person_dir):
+            if file.endswith('.jpg'):
+                img_path = os.path.join(person_dir, file)
+                img = cv2.imread(img_path)
+                if img is None:
+                    continue
+                faces = model.get(img)
+                if faces:
+                    embedding = extract_embedding(model, faces[0])
+                    embeddings.append(embedding)
+
+        if embeddings:
             avg_embedding = np.mean(embeddings, axis=0)
-            
-            # Tampilkan UI untuk assign nama
-            print(f"Menampilkan sampel wajah untuk orang {person_id}")
-            sample_files = [f for f in os.listdir(UNKNOWN_DIR) if f.startswith(f'unknown_{person_id}_')]
-            if sample_files:
-                sample_img = cv2.imread(os.path.join(UNKNOWN_DIR, sample_files[0]))
-                cv2.imshow(f'Wajah Orang {person_id}', sample_img)
-                print("Tekan sembarang key di window gambar untuk lanjut...")
-                cv2.waitKey(0)  # Tunggu user tekan key
-                cv2.destroyWindow(f'Wajah Orang {person_id}')
-            
-            name = input(f"Masukkan nama untuk orang {person_id} (atau 'skip' jika sudah terdaftar): ")
-            if name and name != 'skip' and name not in existing_names:
-                fine_tuned_db[name] = avg_embedding
-                existing_names.add(name)
-                # Hapus file unknown yang sudah diproses
-                for file in os.listdir(UNKNOWN_DIR):
-                    if file.startswith(f'unknown_{person_id}_'):
-                        os.remove(os.path.join(UNKNOWN_DIR, file))
-                print(f"Orang {person_id} didaftarkan sebagai {name}, file unknown dihapus.")
-            elif name == 'skip':
-                print(f"Orang {person_id} dilewati.")
-            else:
-                print(f"Nama {name} sudah ada atau kosong, dilewati.")
+            fine_tuned_db[person_folder] = avg_embedding
+            print(f"Trained {person_folder} with {len(embeddings)} images")
+
+    # Simpan model fine-tuned
+    with open(FINE_TUNED_MODEL, 'wb') as f:
+        pickle.dump(fine_tuned_db, f)
+
+    print(f"Model fine-tuned disimpan ke {FINE_TUNED_MODEL}")
+    print(f"Jumlah orang terlatih: {len(fine_tuned_db)}")
 
     # Simpan model fine-tuned
     with open(FINE_TUNED_MODEL, 'wb') as f:

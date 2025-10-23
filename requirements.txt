@@ -3,3 +3,5 @@ insightface
 numpy
 pillow
 onnxruntime
+flask
+flask-cors
